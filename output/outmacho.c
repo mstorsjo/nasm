@@ -754,6 +754,7 @@ static const struct macho_known_section {
     { ".data",          "__DATA",   "__data",           S_REGULAR       },
     { ".rodata",        "__DATA",   "__const",          S_REGULAR       },
     { ".bss",           "__DATA",   "__bss",            S_ZEROFILL      },
+    {".llvmasm",        "__LLVM",   "__asm",            S_REGULAR       },
     { ".debug_abbrev",  "__DWARF",  "__debug_abbrev",   S_ATTR_DEBUG    },
     { ".debug_info",    "__DWARF",  "__debug_info",     S_ATTR_DEBUG    },
     { ".debug_line",    "__DWARF",  "__debug_line",     S_ATTR_DEBUG    },
@@ -1713,8 +1714,19 @@ static void macho_cleanup(void)
     struct section *s;
     struct reloc *r;
     struct symbol *sym;
+    int bits;
 
     dfmt->cleanup();
+
+    /* create a dummy __asm section with a single zero byte.
+     * this is a workaround for making binaries compatible with
+     * bitcode enabled, which is required for watchOS and tvOS */
+    macho_section(".llvmasm", &bits);
+    s = get_section_by_name("__LLVM", "__asm");
+    if (s != NULL) {
+      saa_write8(s->data, 0);
+      s->size += 1;
+    }
 
     /* Sort all symbols.  */
     macho_layout_symbols (&nsyms, &strslen);
