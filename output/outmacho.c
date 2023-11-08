@@ -1274,6 +1274,14 @@ static void macho_calculate_sizes (void)
 	}
     }
 
+    if (build_version_platform == PLATFORM_INVALID) {
+      build_version_platform = PLATFORM_MACOS;
+      if (fmt.ptrsize == 8)
+        build_version_minos = 0xA0500; // 10.5.0
+      else
+        build_version_minos = 0xA0400; // 10.4.0
+    }
+
     /* for build_version_command */
     if (build_version_platform != PLATFORM_INVALID) {
       ++head_ncmds;
