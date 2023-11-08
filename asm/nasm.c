@@ -166,6 +166,10 @@ static char *quote_for_pmake(const char *str);
 static char *quote_for_wmake(const char *str);
 static char *(*quote_for_make)(const char *) = quote_for_pmake;
 
+#if defined(OF_MACHO) || defined(OF_MACHO64)
+extern bool macho_set_min_os(const char *str);
+#endif
+
 /*
  * Execution limits that can be set via a command-line option or %pragma
  */
@@ -939,7 +943,8 @@ enum text_options {
     OPT_KEEP_ALL,
     OPT_NO_LINE,
     OPT_DEBUG,
-    OPT_REPRODUCIBLE
+    OPT_REPRODUCIBLE,
+    OPT_MACHO_MIN_OS
 };
 enum need_arg {
     ARG_NO,
@@ -972,6 +977,7 @@ static const struct textargs textopts[] = {
     {"no-line",  OPT_NO_LINE, ARG_NO, 0},
     {"debug",    OPT_DEBUG, ARG_MAYBE, 0},
     {"reproducible", OPT_REPRODUCIBLE, ARG_NO, 0},
+    {"macho-min-os", OPT_MACHO_MIN_OS, ARG_YES, 0},
     {NULL, OPT_BOGUS, ARG_NO, 0}
 };
 
@@ -1334,6 +1340,20 @@ static bool process_arg(char *p, char *q, int pass)
                     break;
                 case OPT_REPRODUCIBLE:
                     reproducible = true;
+                    break;
+                case OPT_MACHO_MIN_OS:
+                    if (pass == 2) {
+                        if (strnstr(ofmt->shortname, "macho", 5) != ofmt->shortname) {
+                            nasm_error(ERR_WARNING | WARN_OTHER | ERR_USAGE,
+                                       "macho-min-os is only valid for macho format, current: %s", ofmt->shortname);
+                            break;
+                        }
+#if defined(OF_MACHO) || defined(OF_MACHO64)
+                        if (!macho_set_min_os(param)) {
+                            nasm_fatalf(ERR_USAGE, "failed to set minimum os for mach-o '%s'", param);
+                        }
+#endif
+                    }
                     break;
                 case OPT_HELP:
                     help(stdout);
@@ -2293,6 +2313,8 @@ static void help(FILE *out)
         "   --lpostfix str append the given string to local symbols\n"
         "\n"
         "   --reproducible attempt to produce run-to-run identical output\n"
+        "\n"
+        "   --macho-min-os minos minimum os version for mach-o format(example: macos11.0)\n"
         "\n"
         "    -w+x          enable warning x (also -Wx)\n"
         "    -w-x          disable warning x (also -Wno-x)\n"
